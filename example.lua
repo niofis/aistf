@@ -55,14 +55,15 @@ local train_data=
 		output={4/5}
 	},
 	{
-		input={25},	
+		input={25},
 		output={5/5}
 	}
 }
 local trainer=nn.NeuralTrainer:new{network=net,learning_rate=1,train_data=train_data}
 local i=0
 while true do
-	local err=trainer:BackPropagation()
+	--local err=trainer:BackPropagation()
+	local err=trainer:Rprop()
 	io.stdout:write(i .. " " .. err .. "\r")
 	i=i+1
 	if err<0.00001 or i>1000000 then break end

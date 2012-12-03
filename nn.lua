@@ -73,23 +73,23 @@ function NeuralLayer:new(o)
 	o=o or {}
 	base.setmetatable(o,self)
 	self.__index=self
-	
+
 	o.size=o.size or 0
 	o.neurons={}
 	o.previous=o.previous
 	o.next=o.next
 	o.input_count =o.input_count or 0
 	o.activation=o.activation
-	
+
 	o.output={}
 	o.input={}
-	
+
 	if(o.previous) then
 		o.input_count=o.previous.size
 	end
-	
+
 	NeuralLayer.init(o)
-	
+
 	return o
 end
 
@@ -126,7 +126,7 @@ function NeuralNetwork:new(o)
     o.layers={}
     o.activation=o.activation
     NeuralNetwork.init(o)
-	
+
 	o.input_layer=o.layers[1]
 	o.output_layer=o.layers[#o.layers]
 
@@ -137,12 +137,12 @@ function NeuralNetwork:init()
     local l=nil
 
 	self.layers={}
-	
+
     math.randomseed(os.time())
 	--First layer (input)
 	--l=NeuralLayer:new{previous=nil,input_count=self.input_count,size=self.input_count,activation=self.activation}
 	--self.layers[1]=l
-	
+
 	--Hidden layers
 	for i,size in base.pairs(self.layers_sizes) do
 		local s=self.input_count
@@ -150,11 +150,11 @@ function NeuralNetwork:init()
 		l=NeuralLayer:new{previous=l,input_count=s,size=size,activation=self.activation}
 		self.layers[i]=l
 	end
-	
+
 	--Last layer (output)
 	--l=NeuralLayer:new{previous=l,input_count=l.size,size=self.output_count,activation=self.activation}
 	--self.layers[#self.layers+1]=l
-	
+
 	for i,layer in base.pairs(self.layers) do
 		layer.next=self.layers[i+1]
 	end
@@ -181,7 +181,7 @@ end
 
 
 --[[
-	Train data format: 
+	Train data format:
 	{
 		{
 			input={},
@@ -202,7 +202,7 @@ function NeuralTrainer:new(o)
     o.nn=o.network or {}
 	o.learning_rate=o.learning_rate or 0.5
 	o.train_data=o.train_data or {}
-	
+
     return o
 end
 
@@ -212,7 +212,7 @@ function NeuralTrainer:BackPropagation()
     for _,data in base.pairs(self.train_data) do
 		local actual_out=self.nn:run(data.input)
 		local expected_out=data.output
-		
+
     	for i=1,#actual_out do
 			network_error=network_error + math.pow(actual_out[i]-expected_out[i],2)/2;
     	end
@@ -221,19 +221,19 @@ function NeuralTrainer:BackPropagation()
 		for i,neuron in base.pairs(layer.neurons) do
 			neuron.bp_error=neuron.output*(1-neuron.output)*(neuron.output-expected_out[i])
 		end
-		
+
 		layer=layer.previous
 		while layer do
 			for i, neuron in base.pairs(layer.neurons) do
-				local exp=0
+				local expected=0
 				for j,m in base.pairs(layer.next.neurons) do
-					exp=exp+m.weights[i]*m.bp_error
+					expected=expected+m.weights[i]*m.bp_error
 				end
-				neuron.bp_error=neuron.output*(1-neuron.output)*exp
+				neuron.bp_error=neuron.output*(1-neuron.output)*expected
 			end
 			layer=layer.previous
 		end
-		
+
 		--Weights update
 		layer=self.nn.input_layer
 		while layer do
@@ -249,25 +249,67 @@ function NeuralTrainer:BackPropagation()
     return network_error
 end
 
+function NeuralTrainer:Rprop()
+    local network_error=0
 
+    for train_index,data in base.pairs(self.train_data) do
+		local actual_out=self.nn:run(data.input)
+		local expected_out=data.output
 
-function NeuralTrainer:OutputDeviation(layer_index)
-	local deviation={}
-	
-	return deviation
+    	for i=1,#actual_out do
+			network_error=network_error + math.pow(actual_out[i]-expected_out[i],2)/2;
+    	end
+
+		local layer=self.nn.output_layer
+		for i,neuron in base.pairs(layer.neurons) do
+			neuron.bp_error=neuron.output*(1-neuron.output)*(neuron.output-expected_out[i])
+		end
+
+		layer=layer.previous
+		while layer do
+			for i, neuron in base.pairs(layer.neurons) do
+				local expected=0
+				for j,m in base.pairs(layer.next.neurons) do
+					expected=expected+m.weights[i]*m.bp_error
+				end
+				neuron.bp_error=neuron.output*(1-neuron.output)*expected
+			end
+			layer=layer.previous
+		end
+
+		--Weights update
+		layer=self.nn.input_layer
+		while layer do
+			for i,neuron in base.pairs(layer.neurons) do
+				neuron.old_partial_derivative=neuron.old_partial_derivative or {}
+				neuron.old_delta=neuron.old_delta or {}
+				for j,w in base.pairs(neuron.weights) do
+					local old_partial_derivative=neuron.old_partial_derivative[j] or 0
+					local partial_derivative=neuron.bp_error*layer.input[j]
+					local r=old_partial_derivative*partial_derivative
+					local old_delta=neuron.old_delta[j] or 0
+					local delta=0.1
+					local np=1.2
+					local nm=0.5
+					if r>0 then
+						delta=math.min(old_delta*np,50)
+					elseif r<0 then
+						delta=math.max(old_delta*nm,0.1)
+						partial_derivative=0
+					end
+					local s=partial_derivative<0 and 1 or -1
+					neuron.weights[j]=w*s*delta
+					base.print(s)
+					neuron.old_partial_derivative[j]=partial_derivative
+					neuron.old_delta[j]=delta
+
+				end
+			end
+			layer=layer.next
+		end
+	end
+
+    return network_error
 end
-
-NeuralTrainData={}
-function NeuralTrainData:new(o)
-    o=o or {}
-    base.setmetatable(o,self)
-    self.__index=self
-
-    o.input=o.input or {}
-    o.output=o.output or {}
-
-    return o
-end
-
 
 
