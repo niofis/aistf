@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 ]]
 local nn=require("nn")
 
-local net=nn.NeuralNetwork:new{input_count=1,layers_sizes={4,3,1}, activation=nn.CreateLogSigmoidFunction(1)}
+local net=nn.NeuralNetwork:new{input_count=1,layers_sizes={4,3,1}, activation=nn.CreateLogSigmoidFunction(2)}
 
  --[[
 for i,v in pairs(net.layers) do
@@ -66,7 +66,7 @@ while true do
 	local err=trainer:Rprop()
 	io.stdout:write(i .. " " .. err .. "\r")
 	i=i+1
-	if err<0.00001 or i>1000000 then break end
+	if err<0.000001 or i>1000000 then break end
 end
 print("")
 --print(net.layers[1])

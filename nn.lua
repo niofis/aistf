@@ -276,37 +276,55 @@ function NeuralTrainer:Rprop()
 			end
 			layer=layer.previous
 		end
-
-		--Weights update
+		
+		--Calculate partial derivatives
 		layer=self.nn.input_layer
 		while layer do
 			for i,neuron in base.pairs(layer.neurons) do
-				neuron.old_partial_derivative=neuron.old_partial_derivative or {}
-				neuron.old_delta=neuron.old_delta or {}
+				neuron.pd=neuron.pd or {}
 				for j,w in base.pairs(neuron.weights) do
-					local old_partial_derivative=neuron.old_partial_derivative[j] or 0
-					local partial_derivative=neuron.bp_error*layer.input[j]
-					local r=old_partial_derivative*partial_derivative
-					local old_delta=neuron.old_delta[j] or 0
-					local delta=0.1
-					local np=1.2
-					local nm=0.5
-					if r>0 then
-						delta=math.min(old_delta*np,50)
-					elseif r<0 then
-						delta=math.max(old_delta*nm,0.1)
-						partial_derivative=0
-					end
-					local s=partial_derivative<0 and 1 or -1
-					neuron.weights[j]=w*s*delta
-					base.print(s)
-					neuron.old_partial_derivative[j]=partial_derivative
-					neuron.old_delta[j]=delta
-
+					local pd=neuron.pd[j] or 0
+					neuron.pd[j]=pd + neuron.bp_error*layer.input[j]
 				end
 			end
 			layer=layer.next
 		end
+	end
+	
+	--Weights update
+	layer=self.nn.input_layer
+	while layer do
+		for i,neuron in base.pairs(layer.neurons) do
+			neuron.old_pd=neuron.old_pd or {}
+			neuron.old_delta=neuron.old_delta or {}
+			--neuron.old_pd[train_index]=neuron.old_pd[train_index] or {}
+			--neuron.old_delta[train_index]=neuron.old_delta[train_index] or {}
+			for j,w in base.pairs(neuron.weights) do
+				local old_pd=neuron.old_pd[j] or 0
+				local pd=neuron.pd[j]
+				local r=old_pd*pd
+				local old_delta=neuron.old_delta[j] or 0.1
+				local delta=old_delta
+				local np=1.2
+				local nm=0.5
+				if r>0 then
+					delta=math.min(old_delta*np,50)
+				elseif r<0 then
+					delta=math.max(old_delta*nm,0.0000001)
+					pd=0
+				end
+				--base.print(delta,old_delta,old_delta*np,old_delta*nm)
+				local s=0
+				if pd<0 then s=-1 
+				elseif pd>0 then s=1
+				end
+				neuron.weights[j]=w-s*delta
+				neuron.old_pd[j]=pd
+				neuron.old_delta[j]=delta
+				neuron.pd[j]=0 --Clear sum for next epoch
+			end
+		end
+		layer=layer.next
 	end
 
     return network_error
