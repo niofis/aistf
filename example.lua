@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE.
 ]]
 local nn=require("nn")
 
-local net=nn.NeuralNetwork:new{input_count=1,layers_sizes={4,3,1}, activation=nn.CreateLogSigmoidFunction(2)}
+local net=nn.NeuralNetwork:new{input_count=1,layers_sizes={4,3,1}, sigmoid_slope=2}
 
  --[[
 for i,v in pairs(net.layers) do

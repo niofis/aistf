@@ -122,9 +122,10 @@ function NeuralNetwork:new(o)
     --o.input_count=o.input_count or 0
     o.layers_sizes=o.layers_sizes or {}
 	--o.output_count=o.output_count or 0
-    o.weights=o.weights or {}
+    --o.weights=o.weights or {}
     o.layers={}
-    o.activation=o.activation
+	o.sigmoid_slope = o.sigmoid_slope or 1
+    o.activation=CreateLogSigmoidFunction(o.sigmoid_slope)
     NeuralNetwork.init(o)
 
 	o.input_layer=o.layers[1]
@@ -162,6 +163,26 @@ end
 
 function NeuralNetwork:run(input)
     return self.layers[1]:run(input)
+end
+
+function NeuralNetwork:to_table()
+	table t={}
+	t.layers_sizes=self.layers_sizes
+	t.input_scount=self.input_count
+	t.sigmoid_slope=self.sigmoid_slope
+	t.layers={}
+	for i,v in base.pairs(self.layers) do
+		t.layers[i]=v.weights
+	end
+	return t
+end
+
+function NeuralNetwork.from_table(data)
+	local nn=NeuralNetwork:new{input_count=data.input_count,layers_sizes=data.layers_sizes, sigmoid_slope=data.sigmoid_slope}
+	for i,v in base.pairs(nn.layers) do
+		v.weights=data[i].weights
+	end
+	return nn
 end
 
 function CreateStepFunction(threshold)
